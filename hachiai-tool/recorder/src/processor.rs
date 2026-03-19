@@ -39,6 +39,93 @@ impl Processor {
         self.last_event = Some(processed_event.clone());
         Some(processed_event)
     }
+
+    pub fn group_events(&self, events: Vec<ProcessedEvent>) -> Vec<LogicalStep> {
+        let mut steps = Vec::new();
+        let mut current_step: Option<LogicalStep> = None;
+
+        for event in events {
+            match &mut current_step {
+                Some(step) if step.can_merge(&event) => {
+                    step.add_event(event);
+                }
+                _ => {
+                    if let Some(step) = current_step.take() {
+                        steps.push(step);
+                    }
+                    current_step = Some(LogicalStep::new(event));
+                }
+            }
+        }
+
+        if let Some(step) = current_step {
+            steps.push(step);
+        }
+
+        steps
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct LogicalStep {
+    pub title: String,
+    pub description: String,
+    pub events: Vec<ProcessedEvent>,
+    pub app_name: String,
+}
+
+impl LogicalStep {
+    pub fn new(event: ProcessedEvent) -> Self {
+        let mut step = Self {
+            title: "Action".to_string(),
+            description: String::new(),
+            app_name: event.window.app_name.clone(),
+            events: Vec::new(),
+        };
+        step.add_event(event);
+        step
+    }
+
+    pub fn can_merge(&self, event: &ProcessedEvent) -> bool {
+        if self.app_name != event.window.app_name {
+            return false;
+        }
+
+        // Merge consecutive key presses in the same app
+        if let (ActionType::KeyPress { .. }, ActionType::KeyPress { .. }) = (&self.events.last().unwrap().action, &event.action) {
+            return true;
+        }
+
+        false
+    }
+
+    pub fn add_event(&mut self, event: ProcessedEvent) {
+        self.events.push(event);
+        self.update_intent();
+    }
+
+    fn update_intent(&mut self) {
+        if self.events.is_empty() { return; }
+
+        let first_event = &self.events[0];
+        let app_name = &self.app_name;
+
+        match &first_event.action {
+            ActionType::Click { button, .. } => {
+                self.title = format!("Click {} in {}", button, app_name);
+                self.description = format!("The user clicked the {} button in {}.", button, app_name);
+            }
+            ActionType::KeyPress { .. } => {
+                let key_count = self.events.len();
+                self.title = format!("Type in {}", app_name);
+                self.description = format!("The user typed {} characters in {}.", key_count, app_name);
+            }
+            ActionType::Scroll { .. } => {
+                self.title = format!("Scroll in {}", app_name);
+                self.description = format!("The user scrolled in {}.", app_name);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
