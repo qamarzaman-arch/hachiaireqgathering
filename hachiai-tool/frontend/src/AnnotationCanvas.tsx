@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stage, Layer, Rect, Transformer } from 'react-konva';
+import { Stage, Layer, Rect } from 'react-konva';
 
 interface Annotation {
   id: string;
@@ -12,7 +12,7 @@ interface Annotation {
 
 export default function AnnotationCanvas({ imageUrl }: { imageUrl: string }) {
   const [annotations, setAnnotations] = React.useState<Annotation[]>([]);
-  const [selectedId, selectShape] = React.useState<string | null>(null);
+  const [, selectShape] = React.useState<string | null>(null);
 
   const addAnnotation = (type: 'highlight' | 'blur') => {
     const newAnnotation: Annotation = {
