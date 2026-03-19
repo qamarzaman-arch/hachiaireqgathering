@@ -12,5 +12,3 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-# We'll move our recorder logic here or keep it as a workspace
-hachiai-recorder = { path = "../../recorder" }
